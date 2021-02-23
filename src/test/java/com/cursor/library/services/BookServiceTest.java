@@ -6,41 +6,40 @@ import com.cursor.library.exceptions.BookNameIsNullException;
 import com.cursor.library.exceptions.BookNameIsTooLongException;
 import com.cursor.library.models.Book;
 import com.cursor.library.models.CreateBookDto;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.Collections;
+import java.util.Arrays;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(MockitoExtension.class)
+
 public class BookServiceTest {
 
-    private  BookService bookService;
-
-    @Mock
-    private BookDao bookDao = new BookDao();
-
-    public BookServiceTest() {
-        bookService = new BookService(bookDao);
-    }
+    private BookService bookService;
+    private BookDao bookDao;
 
     @BeforeAll
     void setUp() {
         bookDao = Mockito.mock(BookDao.class);
-
+        bookService = new BookService(bookDao);
     }
 
     @Test
     void getBookByIdSuccessTest() {
         String bookId = "book-id";
 
-        Mockito.when(bookDao.getById(bookId)).thenReturn(new Book(bookId));
+        when(bookDao.getById(bookId)).thenReturn(new Book(bookId));
 
         Book bookFromDB = bookService.getById(bookId);
 
@@ -48,6 +47,12 @@ public class BookServiceTest {
                 bookId,
                 bookFromDB.getBookId()
         );
+    }
+
+    @Test
+    void getBookByIdNullExceptionTest() {
+
+        assertThrows(BadIdException.class, () -> bookService.getById(null));
     }
 
     @Test
@@ -65,41 +70,39 @@ public class BookServiceTest {
                 () -> bookService.getValidatedBookName(null)
         );
     }
+
     @Test
-    @DisplayName("The test of too long name of book ")
-    void getBookValidationNameIsTooLongExceptionTest() {
-        BookNameIsTooLongException theTooLongWordException = Assertions.assertThrows(
+    void getValidateBookNameExpectBookNameIsTooLongExceptionTest() {
+        assertThrows(
                 BookNameIsTooLongException.class,
-                () -> bookService.getValidatedBookName(" ".repeat(1001)));
-                Assertions.assertEquals(null, theTooLongWordException.getMessage());
-
-    }
-    @Test
-    @DisplayName("Testing the book by id")
-    void getBookById() {
-      String bookId = "random_id_value_3";
-      Book test = new Book();
-        test.setName("Elon Musk: Tesla, SpaceX, and the Quest for a Fantastic Future");
-        test.setDescription("");
-        test.setAuthors(Collections.singletonList("Ashlee Vance"));
-        test.setYearOfPublication(2017);
-        test.setNumberOfWords(865874);
-        test.setRating(10);
-        Book actual = bookService.getById(bookId);
-        Assertions.assertEquals(test.getName(), actual.getName());
+                () -> bookService.getValidatedBookName(" ".repeat(1001))
+        );
     }
 
     @Test
-    @DisplayName("The test which show us a correct and property implementation a part of code")
-    void getCreateBookTest() {
-        CreateBookDto bookDto = new CreateBookDto();
-        bookDto.setName("The catcher in the rye");
-        bookDto.setDescription("This book told us the story about one young man");
-        bookDto.setAuthors(Collections.singletonList("J.D.Salinger"));
-        bookDto.setYearOfPublication(1951);
-        bookDto.setRating(98);
-        bookDto.setNumberOfWords(151532);
+    void createBookTest() {
+        List<String> authors = Arrays.asList("Author1", "Author2", "Author3");
+        CreateBookDto bookDto = CreateBookDto.builder()
+                .name("BookDtoName")
+                .description("BookDto description")
+                .authors(authors)
+                .yearOfPublication(2015)
+                .numberOfWords(378)
+                .rating(5)
+                .build();
 
+        Book book2 = Book.builder()
+                .bookId("bookId")
+                .name(bookDto.getName())
+                .description(bookDto.getDescription())
+                .authors(bookDto.getAuthors())
+                .yearOfPublication(bookDto.getYearOfPublication())
+                .numberOfWords(bookDto.getNumberOfWords())
+                .rating(bookDto.getRating())
+                .build();
+        when(bookDao.addBook(any(Book.class))).thenReturn(book2);
+        Book book1 = bookService.createBook(bookDto);
+
+        assertEquals(book1, book2);
     }
 }
-

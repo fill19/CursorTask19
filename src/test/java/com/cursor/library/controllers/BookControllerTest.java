@@ -4,7 +4,7 @@ import com.cursor.library.daos.BookDao;
 import com.cursor.library.models.Book;
 import com.cursor.library.models.CreateBookDto;
 import com.fasterxml.jackson.core.type.TypeReference;
-import org.junit.Assert;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -18,15 +18,58 @@ import java.util.List;
 
 public class BookControllerTest extends BaseControllerTest {
 
-    private BookDao bookDao;
+    BookDao bookDao;
+
 
     @BeforeAll
     void setUp() {
         bookDao = new BookDao();
+
     }
 
     @Test
-    public void createBookTest() throws Exception {
+    void getAllSuccessTest() throws Exception {
+
+        MockHttpServletRequestBuilder requestBuilder = MockMvcRequestBuilders.get("/books");
+        MvcResult result = mockMvc.perform(requestBuilder).andExpect(MockMvcResultMatchers.status().isOk()).andReturn();
+        List<Book> bookListTest = OBJECT_MAPPER.readValue(result.getResponse().getContentAsString(),
+                new TypeReference<>() {
+                });
+        List<Book> booklist = bookDao.getAll();
+        Assertions.assertEquals(bookListTest, booklist);
+    }
+
+    @Test
+    void getByIdSuccessTest() throws Exception {
+        Book book = bookDao.getById("random_id_value_3");
+        MockHttpServletRequestBuilder requestBuilder = MockMvcRequestBuilders.get("/books/{bookId}", book.getBookId());
+        mockMvc.perform(requestBuilder).andExpect(MockMvcResultMatchers.status().isOk()).andReturn();
+
+    }
+
+    @Test
+    void getByIdNotFoundTest() throws Exception {
+        MockHttpServletRequestBuilder requestBuilder = MockMvcRequestBuilders.get("/books/{bookId}", "bookId");
+        mockMvc.perform(requestBuilder).andExpect(MockMvcResultMatchers.status().isNotFound());
+    }
+
+    @Test
+    void DeleteByIdSuccessTest() throws Exception {
+        Book book = bookDao.getById("random_id_value_1");
+        MockHttpServletRequestBuilder requestBuilder = MockMvcRequestBuilders.delete("/books/{bookId}", book.getBookId());
+        mockMvc.perform(requestBuilder).andExpect(MockMvcResultMatchers.status().isOk());
+        bookDao.deleteById("random_id_value_1");
+
+    }
+
+    @Test
+    void deleteByIdNotFoundTest() throws Exception {
+        MockHttpServletRequestBuilder requestBuilder = MockMvcRequestBuilders.delete("/books/{bookId}", "bookId");
+        mockMvc.perform(requestBuilder).andExpect(MockMvcResultMatchers.status().isNotFound());
+    }
+
+    @Test
+    void createBookTest() throws Exception {
         CreateBookDto createBookDto = new CreateBookDto();
         createBookDto.setName("Cool createBookDto");
         createBookDto.setDescription("Cool description");
@@ -47,48 +90,9 @@ public class BookControllerTest extends BaseControllerTest {
                 result.getResponse().getContentAsString(),
                 Book.class
         );
-
+        bookDao.addBook(book);
         mockMvc.perform(MockMvcRequestBuilders.get("/books/" + book.getBookId()))
                 .andExpect(MockMvcResultMatchers.status().isOk());
     }
 
-    @Test
-    public void getAllTest() throws Exception {
-        MockHttpServletRequestBuilder requestBuilder = MockMvcRequestBuilders.get("/books");
-
-        MvcResult result = this.mockMvc.perform(requestBuilder)
-                .andExpect(MockMvcResultMatchers.status().isOk())
-                .andReturn();
-
-        List<Book> books;
-        books = OBJECT_MAPPER.readValue(
-                result.getResponse().getContentAsString(),
-                new TypeReference<>() {
-                }
-        );
-
-        List<Book> theMainList = bookDao.getAll();
-
-        Assert.assertEquals(theMainList, books);
-    }
-
-    @Test
-    public void TheProperIdTest() throws Exception {
-        this.mockMvc.perform(MockMvcRequestBuilders.get("/books/some id"))
-                .andExpect(MockMvcResultMatchers.status().isNotFound());
-    }
-
-    @Test
-    public void deleteBooksFromDB() throws Exception {
-        this.mockMvc.perform(MockMvcRequestBuilders.delete("/books/" + "random_id_value_2"))
-                .andExpect(MockMvcResultMatchers.status().isOk());
-
-    }
-
-    @Test
-    public void TheNotFoundIdTest() throws Exception {
-        this.mockMvc.perform(MockMvcRequestBuilders.get("/books/some id"))
-                .andExpect(MockMvcResultMatchers.status().isNotFound());
-
-    }
 }
